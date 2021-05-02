@@ -1,0 +1,56 @@
+/* ccs styles, needed for mz_dropdown_div */
+
+.mz_button-droptown {
+  position: absolute;
+  background-color: var( --box-color);
+  color: var(--text-color);
+  padding: 0.25em 1em;
+  /* font-size: 16px; */
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.25s linear;
+}
+
+.mz_button-droptown:hover, .mz_button-droptown:focus {
+  background-color: var(--box-hover-color);
+  /* border-radius: 50%; */
+}
+
+.mz_dropdown-content {
+  /* display: none; */
+  max-height: 0;
+  position: absolute;
+  background-color: var( --box-color);
+  min-width: 100%;
+  overflow: auto;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  margin-top: 0.25em;
+  /* margin-left: -16px; */
+  z-index: 5;
+  text-align: left;
+  /* float: right; */
+}
+
+.mz_dropdown-minwidth {
+  min-width: 15em;
+}
+
+.mz_dropdown-content-opt {
+  /* color: black; */
+  padding: 0.25em 1em;
+  text-decoration: none;
+  display: block;
+}
+
+.mz_show{
+  /* display: block; */
+  max-height: 280px;
+}
+
+
+.mz_dropdown-content-opt:hover {background-color: var(--box-hover-color);}
+
+.mz_button-droptown_hover:hover .mz_dropdown-content {
+  /* display: block; */
+  max-height: 180px;
+}
