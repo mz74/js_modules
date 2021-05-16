@@ -25,14 +25,14 @@
   overflow: auto;
   box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
   margin-top: 0.25em;
-  /* margin-left: -16px; */
   z-index: 5;
   text-align: left;
   /* float: right; */
 }
 
+/* not to be used */
 .mz_dropdown-minwidth {
-  min-width: 15em;
+  min-width: 25em;
 }
 
 .mz_dropdown-content-opt {
@@ -44,7 +44,7 @@
 
 .mz_show{
   /* display: block; */
-  max-height: 280px;
+  max-height: 300px;  
 }
 
 
@@ -52,5 +52,5 @@
 
 .mz_button-droptown_hover:hover .mz_dropdown-content {
   /* display: block; */
-  max-height: 180px;
+  max-height: 300px;
 }

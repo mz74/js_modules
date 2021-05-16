@@ -1,3 +1,5 @@
+// 2021-05-13 new parameters: y_relative, x_relative; removed pos_relative
+
 "use strict";
 
 const mz_svg_text = () => {
@@ -16,6 +18,10 @@ const mz_svg_text = () => {
     x: 0.5,
     y: 0.5,
 
+    // relative or absolute xy position values
+    x_relative: 'TRUE',
+    y_relative: 'TRUE',
+
     // css class
     class: undefined,
 
@@ -25,9 +31,6 @@ const mz_svg_text = () => {
     color: undefined,
     baseline: 'middle', // dominant-baseline in vertical direction e.g auto, middle, hanging
     anchor: undefined, // horizontal direction e.g. start, middle, end
-
-    // relative or absolute xy position values
-    pos_relative: 'TRUE',
 
   };
 
@@ -60,13 +63,12 @@ const mz_svg_text = () => {
       .attr("height", div_height);
 
     // absolute or relative xy position values
-    let x_scale = 1,
-      y_scale = 1;
+    const x_scale = p.x_relative ==  "TRUE" ? div_width :  1;
+    const y_scale = p.y_relative ==  "TRUE" ? div_height :  1;
 
-    if (p.pos_relative == "TRUE") {
-      x_scale = div_width;
-      y_scale = div_height;
-    }
+    console.log(p.text);
+    console.log(x_scale);
+    console.log(y_scale);
 
     chart_svg.append("text")
       .text(p.text)

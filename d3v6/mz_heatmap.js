@@ -3,9 +3,9 @@
 // 2020-11-29 -> d3v6
 // 2021-04-15 -> function to function factory
 // 2021-05-04 improve color values
-// 2021-05-16 add date axis
+// 2021-05-04 convert to bar diagram
 
-const mz_lollipop = () => {
+const mz_heatmap = () => {
 
   const p = {
 
@@ -16,35 +16,46 @@ const mz_lollipop = () => {
     data: [], // array of objects
 
     // which data to show
-    label: "Segment",
+    label_x: "Segment",
     value: 'Kundenanzahl',
+    label_y: "group",
+    mode: 'selected', // show percent 
     sort: "noTRUE",
-    order: undefined,
+    // order data
+    order_label: undefined,
+    order_group: undefined,
 
-    label_format: 'categorical', // categorical, numeric or date
-
-    // lollipop properties
-    color: undefined,
-    color_value: '#675f50',
-    radius: 7,
+    // bar properties
+    color: ['#F5F5F5', '#808080'],
     orientation: "nohorizontal",
-    show_data_line: "TRUE",
+    bar_margin: 0.15,
 
     // chart corners
     left: 0.2,
     top: 0.12,
-    right: 0.8,
+    right: 0.885,
     bottom: 0.9,
+
+    // extra data line
+    show_data_line: 'TRUE',
+    line_orientation: 'nohorizontal',
+    line_color: '#cb5e38',
+    line_thickness: 3,
 
     // axes
     axis_value: "noTRUE",
     axis_label: "TRUE",
-    axis_left_class: "path_none mz_text_small",
+    axis_left_class: "axis_chart3",
     axis_bottom_class: "axis_chart",
     padding_axis_value: 0.02, // extra space for value-axis
     grid_value: "noTRUE",
     grid_label: "noTRUE",
-    ticks_nb: 2,
+
+    // legends
+    legend_percent: true,
+    legend_percent_left: 0.25,
+    legend_percent_top: 0.97,
+    legend_class: 'mz_text_small mz_text_color',
 
     // direct labeling 
     text: "TRUE",
@@ -54,10 +65,10 @@ const mz_lollipop = () => {
     text_dy: 0,
     // text_format: "+" + mz_text_format[mz_vbox1_start], //"+$0.1s"
     text_format: "0.3s",
-    text_class: 'mz_small_text_light',
+    text_class: 'mz_text_tiny mz_text_dark',
 
     // tooltip
-    tooltip_text: 'd[p.label] + "<br>"+ p.value + ": " + d3.format(p.tooltip_format)(d[p.value])',
+    tooltip_text: 'd[p.label] + " " + d[p.group] + "<br>"+ chart_value + ": " + d3.format(p.tooltip_format)(d[chart_value])',
     tooltip_text_pre: undefined, // e.g "Vgl. Vorperiode",
     tooltip_format: ",~f",
     tooltip_class: 'toolTip',
@@ -108,6 +119,24 @@ const mz_lollipop = () => {
     const chart_width = chart_right - chart_left;
     const chart_height = chart_bottom - chart_top;
 
+    // prepare data
+    let chart_value = p.value;
+
+    // cal percents
+    // the y_values -> 100%
+    for (let i in p.data) {
+      let d_data = p.data.filter(a => a[p.label_y] == p.data[i][p.label_y]);
+      let d_max = d3.max(d_data, d => d[p.value]);
+      p.data[i].percent = p.data[i][p.value] / d_max;
+    }
+    if (p.mode === 'selected') {
+      chart_value = 'percent';
+      p.text_format = '.2p';
+    }
+
+    console.log(p.data);
+    console.log(chart_value);
+
     // sort data - decreasing
     if (p.sort == "TRUE") {
       p.data.sort(function (a, b) {
@@ -116,68 +145,65 @@ const mz_lollipop = () => {
     }
 
     // sort data - predefined order
-    if (p.order !== undefined) {
-      p.data.sort((a, b) => (p.order.indexOf(a[p.label]) - p.order.indexOf(b[p.label])));
+    if (p.order_label !== undefined) {
+      p.data.sort((a, b) => (p.order_label.indexOf(b[p.label]) - p.order_label.indexOf(a[p.label])));
+    }
+    if (p.order_group !== undefined) {
+      p.data.sort((a, b) => (p.order_group.indexOf(a[p.group]) - p.order_group.indexOf(b[p.group])));
     }
 
     // Prepare Scale
 
     // max and min values
-    let dummy_max = d3.max(p.data, d => d[p.value]);
-    let dummy_min = d3.min(p.data, d => d[p.value]);
+    let dummy_max = d3.max(p.data, d => d[chart_value]);
+    let dummy_min = d3.min(p.data, d => d[chart_value]);
+    let dummy_med = d3.median(p.data, d => d[chart_value]);
+    if (2.5 * dummy_med < dummy_max) {
+      dummy_med = 2 * dummy_med;
+    }
 
-    if (dummy_min > 0) {
-      dummy_min = 0;
+    // define colors
+
+    let color_med = d3.scaleLinear()
+      .domain([dummy_min, dummy_max])
+      .range(p.color)
+      .interpolate(d3.interpolateLab)(0.5 * (dummy_max + dummy_min));
+
+    let col_scale = d3.scaleLinear()
+      .domain([dummy_min, dummy_med, dummy_max])
+      .range([p.color[0], color_med, p.color[1]])
+      .interpolate(d3.interpolateLab);
+
+    for (let i in p.data) {
+      p.data[i].color = col_scale(p.data[i][chart_value]);
     }
-    if (dummy_max < 0) {
-      dummy_max = 0;
-    }
+
+
+
+
 
     // extra space for value-axis
-    const pad_value =
-      p.orientation == "horizontal" ?
-      p.padding_axis_value * chart_height :
-      p.padding_axis_value * chart_width;
+    const pad_value = p.padding_axis_value * chart_width;
 
     // axis scales
     // horizontal axis (x)
     const x_scale =
-      p.orientation == "horizontal" ?
-      p.label_format == 'date' ?
       d3
-      .scaleTime()
-      .range([chart_left + pad_value, chart_right - pad_value])
-      .domain(d3.extent(p.data, d => d[p.label])) :
-      d3
-      .scalePoint()
+      .scaleBand()
       .range([chart_left, chart_right])
-      .domain(p.data.map(d => d[p.label]))
-      .padding(0.5) :
-      d3
-      .scaleLinear()
-      .range([
-        chart_left + pad_value,
-        chart_right - pad_value
-      ])
-      .domain([dummy_min, dummy_max]);
+      .domain(p.data.map(d => d[p.label_x]))
+      .padding(p.bar_margin)
 
     // vertical axis (y)
     const y_scale =
-      p.orientation == "horizontal" ?
       d3
-      .scaleLinear()
-      .range([
-        chart_bottom - pad_value, // check if correct !!! (+-)
-        chart_top + pad_value
-      ])
-      .domain([dummy_min, dummy_max]) :
-      d3
-      .scalePoint()
+      .scaleBand()
       .range([chart_bottom, chart_top])
-      .domain(p.data.map(d => d[p.label]))
-      .padding(0.5);
+      .domain(p.data.map(d => d[p.label_y]))
+      .padding(p.bar_margin);
 
-    //  var y_scale2 = d3.scalePoint().range([height2, 0]).padding(0.5);
+    // inner scales
+
 
     // the Tooltip
     const tooltip = d3
@@ -192,36 +218,29 @@ const mz_lollipop = () => {
 
     // -------------------------------------
 
-    let mz_chart = chart_svg
-      .selectAll("mz_lollipop")
-      .data(p.data)
+    // console.log(p.data);
 
-    // add circles
+    let mz_chart = chart_svg
+      .selectAll("mz_bar")
+      .data(p.data);
 
     mz_chart
-      .join("circle")
+      .join("rect")
       .attr("class", p.chart_id)
       //  .attr("id", (d, i) => p.chart_id + "l" + i)
-      .attr("cx", d =>
-        p.orientation == "horizontal" ?
-        x_scale(d[p.label]) :
-        x_scale(d[p.value])
-      )
-      .attr("cy", d =>
-        p.orientation == "horizontal" ?
-        y_scale(d[p.value]) :
-        y_scale(d[p.label])
-      )
+      .attr("x", d => x_scale(d[p.label_x]))
+      .attr("y", d => y_scale(d[p.label_y]))
+      .attr("height", d => y_scale.bandwidth())
       // to have transition
-      .attr("fill", d => p.color == undefined ? p.color_value : d[p.color])
-      .attr("r", 0)
+      // .attr("fill", d => p.color == undefined ? p.color_value : d[p.color])
+      // .attr("r", 0)
       .attr("opacity", 1)
 
       .on("mousemove", function (event, d) {
         d3.select(this)
           .transition()
-          //.attr("opacity", 0.5)
-          .attr("r", 1.5 * p.radius);
+          .attr("opacity", 0.5)
+
 
         if (event.pageX / window.innerWidth > 0.5) {
           tooltip.style("left", undefined);
@@ -239,70 +258,76 @@ const mz_lollipop = () => {
           tooltip.style("bottom", undefined);
         }
 
+
         tooltip.style("display", "inline-block");
         tooltip.html(eval(tooltip_text));
+        // tooltip.html(window.innerHeight - event.pageY);
       })
 
       .on("mouseout", function (event, d) {
         d3.select(this)
           .transition()
-          // .attr("opacity", 1)
-          .attr("r", p.radius);
+          .attr("opacity", 1)
+        // .attr("r", p.radius);
         tooltip.style("display", "none");
       })
 
       .transition()
-      .duration(p.transition_duration / 2)
-      .attr("r", 0)
-      .transition()
-      .duration(p.transition_duration / 2)
-      .attr("r", p.radius);
+      .duration(p.transition_duration)
+      .attr("width", d => x_scale.bandwidth())
+      .attr("fill", d => d.color);
 
-
-    // The data line
+    // -----------------------------------------------------------------------------------------------
+    // add line
 
     if (p.show_data_line == "TRUE") {
+
+
+
       mz_chart
         .join("line")
         // .append("line")
-        .attr("class", p.chart_id)
+        // .attr("class", p.chart_id)
         .attr('pointer-events', 'none')
         .attr("x1", d =>
-          p.orientation == "horizontal" ?
-          x_scale(d[p.label]) :
-          x_scale(0)
+          p.line_orientation == "horizontal" ?
+          x_scale(d[p.label_x]) :
+          x_scale(d[p.label_x]) + 0.95 * x_scale.bandwidth()
         )
         .attr("x2", d =>
-          p.orientation == "horizontal" ?
-          x_scale(d[p.label]) :
-          x_scale(0)
+          p.line_orientation == "horizontal" ?
+          x_scale(d[p.label_x]) :
+          x_scale(d[p.label_x]) + 0.95 * x_scale.bandwidth()
         )
         .attr("y1", d =>
-          p.orientation == "horizontal" ?
-          y_scale(0) :
-          y_scale(d[p.label])
+          p.line_orientation == "horizontal" ?
+          y_scale(d[p.label_y]) + y_scale.bandwidth() * (1 - d[chart_value] / dummy_max) :
+          y_scale(d[p.label_y]) + y_scale.bandwidth()
         )
         .attr("y2", d =>
-          p.orientation == "horizontal" ?
-          y_scale(0) :
-          y_scale(d[p.label])
+          p.line_orientation == "horizontal" ?
+          y_scale(d[p.label_y]) + y_scale.bandwidth() * (1 - d[chart_value] / dummy_max) :
+          y_scale(d[p.label_y]) + y_scale.bandwidth()
         )
         .transition()
         .duration(p.transition_duration)
-        .attr("x1", d =>
-          p.orientation == "horizontal" ?
-          x_scale(d[p.label]) :
-          x_scale(d[p.value])
+        .attr("x2", d =>
+          p.line_orientation == "horizontal" ?
+          x_scale(d[p.label_x]) + x_scale.bandwidth() :
+          x_scale(d[p.label_x]) + 0.95 * x_scale.bandwidth()
         )
         .attr("y1", d =>
-          p.orientation == "horizontal" ?
-          y_scale(d[p.value]) :
-          y_scale(d[p.label])
+          p.line_orientation == "horizontal" ?
+          y_scale(d[p.label_y]) + y_scale.bandwidth() * (1 - d[chart_value] / dummy_max) :
+          y_scale(d[p.label_y]) + y_scale.bandwidth() * (1 - d[chart_value] / dummy_max)
         )
-        .attr("stroke", d => p.color == undefined ? p.color_value : d[p.color])
+        // .attr("stroke", d => p.color == undefined ? p.color_value : d[p.color])
+        .attr('stroke', p.line_color)
         .attr("opacity", 1)
-        .attr("stroke-width", 3);
+        .attr("stroke-width", p.line_thickness);
     }
+
+
 
     // Text
 
@@ -314,40 +339,13 @@ const mz_lollipop = () => {
         .join("text")
         .attr("class", p.text_class);
       mz_chart_text
-        .text(d => d3.format(p.text_format)(d[p.value]))
+        .text(d => d3.format(p.text_format)(d[chart_value]))
         .attr('pointer-events', 'none')
-        .attr("x", d =>
-          p.orientation == "horizontal" ?
-          x_scale(d[p.label]) :
-          x_scale(d[p.value])
-        )
-        .attr("y", d =>
-          p.orientation == "horizontal" ?
-          y_scale(d[p.value]) :
-          y_scale(d[p.label])
-        )
-        .attr("dx", d =>
-          p.orientation == "horizontal" ?
-          mdx :
-          d[p.value] < 0 ?
-          -mdx - 2 * p.radius :
-          mdx + 2 * p.radius
-        )
-        .attr("dy", d =>
-          p.orientation == "horizontal" ?
-          d[p.value] < 0 ?
-          mdy + 2 * p.radius :
-          -mdy :
-          mdy
-        )
-        .attr("text-anchor", d =>
-          p.orientation == "horizontal" ?
-          'middle' :
-          d[p.value] < 0 ?
-          'right' :
-          'left'
-        )
-
+        .attr("x", d => x_scale(d[p.label_x]) + 0.5 * x_scale.bandwidth())
+        .attr("y", d => y_scale(d[p.label_y]) + 0.5 * y_scale.bandwidth())
+        .attr("dx", d => mdx)
+        .attr("dy", d => mdy)
+        .attr("text-anchor", 'middle')
         .attr("fill", p.textcolor)
         .style("user-select", "none")
         .attr("dominant-baseline", "middle")
@@ -391,9 +389,7 @@ const mz_lollipop = () => {
         .call(
           d3
           .axisLeft(y_scale)
-          .ticks(p.ticks_nb)
-          // .text(d => d3.format(p.text_format)(d[p.value]))
-          .tickFormat(p.orientation == "horizontal" ? d3.format(p.text_format) : undefined)
+          .ticks(4)
           .tickSize(ticksize_axis_left)
         );
     }
@@ -409,11 +405,40 @@ const mz_lollipop = () => {
         .call(
           d3
           .axisBottom(x_scale)
-          .ticks(p.ticks_nb)
-          // .tickFormat(d3.timeFormat("%x"))
-          .tickFormat(p.orientation != "horizontal" ? d3.format(p.text_format) : undefined)
+          .ticks(4)
           .tickSize(ticksize_axis_bott)
         );
+    }
+
+    // Legend Percent ---------------------------------------------------------------------
+
+    if (p.legend_percent == true) {
+
+      const legend_percent_left = p.legend_percent_left * div_width,
+        legend_percent_top = p.legend_percent_top * div_height;
+
+      chart_svg
+        .append("text")
+        .attr("class", p.legend_class)
+        .attr("x", legend_percent_left)
+        .attr("y", legend_percent_top)
+        .style("text-anchor", "start")
+        .style("dominant-baseline", "middle")
+        .style('cursor', 'pointer')
+        .text(d => p.mode == 'selected' ? '\u2611' : '\u2610')
+        .on("click", (event, d) => {
+          p.mode = p.mode == 'selected' ? 'unselected' : 'selected';
+          p.cbfun();
+        });
+
+      chart_svg
+        .append("text")
+        .attr("class", p.legend_class)
+        .attr("x", legend_percent_left + 20)
+        .attr("y", legend_percent_top)
+        .style("text-anchor", "start")
+        .style("dominant-baseline", "middle")
+        .text('Kohorte auf Maximum skalieren')
     }
   };
   return {

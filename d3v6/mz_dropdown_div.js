@@ -1,4 +1,5 @@
 // replace eval by using functions
+// 2021-05-13 add parameter min_width
 
 "use strict";
 
@@ -22,6 +23,9 @@ const mz_dropdown_div = () => {
     style: 'right', // option dropdown: connect left or right 
     type: 'click', // click or hover 
 
+    // minwidth of dropdown field in px
+    min_width: 0,
+
     // selection and options
     selection: '',
     options: [],
@@ -32,12 +36,12 @@ const mz_dropdown_div = () => {
 
     // extern parameters and function to evaluate
     cbp: '',
-    cbfun: '',//function(){console.log('run_me');},
+    cbfun: '', //function(){console.log('run_me');},
 
     // css style, cf _dropdown.css
-    class_button: 'mz_button-droptown normal_text',
+    class_button: 'mz_button-droptown mz_text_small',
     class_button_hover: 'mz_button-droptown_hover', // extra class for hover button
-    class_dropdown: 'mz_dropdown-content',
+    class_dropdown: 'mz_dropdown-content', // add mz_dropdown-minwidth
     class_option: 'mz_dropdown-content-opt',
   };
 
@@ -117,6 +121,7 @@ const mz_dropdown_div = () => {
       .attr('id', p.chart_id) // to be changed
       .style('right', () => p.style === 'right' ? 0 + 'px' : 'undefined')
       .style('left', () => p.style !== 'right' ? 0 + 'px' : 'undefined')
+      .style('min-width', p.min_width + 'px')
       .selectAll('opt_divs')
       .data(p.options)
       .join('div')
