@@ -66,9 +66,9 @@ const mz_svg_text = () => {
     const x_scale = p.x_relative ==  "TRUE" ? div_width :  1;
     const y_scale = p.y_relative ==  "TRUE" ? div_height :  1;
 
-    console.log(p.text);
-    console.log(x_scale);
-    console.log(y_scale);
+    // console.log(p.text);
+    // console.log(x_scale);
+    // console.log(y_scale);
 
     chart_svg.append("text")
       .text(p.text)

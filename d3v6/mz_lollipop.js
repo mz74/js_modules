@@ -40,7 +40,7 @@ const mz_lollipop = () => {
     axis_value: "noTRUE",
     axis_label: "TRUE",
     axis_left_class: "path_none mz_text_small",
-    axis_bottom_class: "axis_chart",
+    axis_bottom_class: "path_none mz_text_small",
     padding_axis_value: 0.02, // extra space for value-axis
     grid_value: "noTRUE",
     grid_label: "noTRUE",

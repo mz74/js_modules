@@ -3,10 +3,10 @@
 // 2020-11-29 -> d3v6
 // 2021-04-15 -> function to function factory
 // 2021-05-04 improve color values
-// 2021-05-04 convert to bar diagram
-// 2021-05-13 add legend
+// 2021-05-16 add date axis
+// 2021-05-22 change to xy chart
 
-const mz_bar = () => {
+const mz_xy = () => {
 
   const p = {
 
@@ -19,18 +19,18 @@ const mz_bar = () => {
     // which data to show
     label: "Segment",
     value: 'Kundenanzahl',
-    group: "group",
-    sort: "noTRUE",
-    // order data
-    order_label: undefined,
-    order_group: undefined,
+    group: 'group',
+    sort: "TRUE",
+    order: undefined,
 
-    // bar properties
+    label_format: 'categorical', // categorical, numeric or date
+
+    // lollipop properties
     color: undefined,
     color_value: '#675f50',
+    radius: 7,
     orientation: "nohorizontal",
-    bar_margin: 0.15,
-    bar_innermargin: 0.15,
+    show_data_line: "TRUE",
 
     // chart corners
     left: 0.2,
@@ -42,10 +42,11 @@ const mz_bar = () => {
     axis_value: "noTRUE",
     axis_label: "TRUE",
     axis_left_class: "path_none mz_text_small",
-    axis_bottom_class: "axis_chart",
+    axis_bottom_class: "path_none mz_text_small",
     padding_axis_value: 0.02, // extra space for value-axis
     grid_value: "noTRUE",
     grid_label: "noTRUE",
+    ticks_nb: 2,
 
     // direct labeling 
     text: "TRUE",
@@ -55,14 +56,10 @@ const mz_bar = () => {
     text_dy: 0,
     // text_format: "+" + mz_text_format[mz_vbox1_start], //"+$0.1s"
     text_format: "0.3s",
-    text_class: 'mz_text_small mz_text_light',
+    text_class: 'mz_small_text_light',
 
     // tooltip
-    tooltip_text: '" <table>' +
-      '<tr> <th>" +  d[p.label] + " </th>  </tr>' +
-      '<tr> <td> Segment: </td> <td> <b>" +  d[p.group] + "</b> </td> </tr>' +
-      '<tr> <td>"+ p.value + ": </td> <td> <b>" +  d3.format(p.tooltip_format)(d[p.value]) + "</b> </td> </tr>' +
-      '</table>" ',
+    tooltip_text: 'd[p.label] + "<br>"+ p.value + ": " + d3.format(p.tooltip_format)(d[p.value])',
     tooltip_text_pre: undefined, // e.g "Vgl. Vorperiode",
     tooltip_format: ",~f",
     tooltip_class: 'toolTip',
@@ -79,7 +76,6 @@ const mz_bar = () => {
     legend_top: 0.95,
     legend_space: 0.25,
     legend_class: 'mz_text_small mz_text_color',
-
 
     // transition
     transition_duration: 1000,
@@ -130,16 +126,13 @@ const mz_bar = () => {
     // sort data - decreasing
     if (p.sort == "TRUE") {
       p.data.sort(function (a, b) {
-        return a[p.value] - b[p.value];
+        return a[p.label] - b[p.label];
       });
     }
 
     // sort data - predefined order
-    if (p.order_label !== undefined) {
-      p.data.sort((a, b) => (p.order_label.indexOf(b[p.label]) - p.order_label.indexOf(a[p.label])));
-    }
-    if (p.order_group !== undefined) {
-      p.data.sort((a, b) => (p.order_group.indexOf(a[p.group]) - p.order_group.indexOf(b[p.group])));
+    if (p.order !== undefined) {
+      p.data.sort((a, b) => (p.order.indexOf(a[p.label]) - p.order.indexOf(b[p.label])));
     }
 
     // which data to show
@@ -151,7 +144,6 @@ const mz_bar = () => {
         }
       // console.log(mz_data);
     }
-
 
     // Prepare Scale
 
@@ -176,11 +168,16 @@ const mz_bar = () => {
     // horizontal axis (x)
     const x_scale =
       p.orientation == "horizontal" ?
+      p.label_format == 'date' ?
       d3
-      .scaleBand()
+      .scaleTime()
+      .range([chart_left + pad_value, chart_right - pad_value])
+      .domain(d3.extent(mz_data, d => d[p.label])) :
+      d3
+      .scalePoint()
       .range([chart_left, chart_right])
       .domain(mz_data.map(d => d[p.label]))
-      .padding(p.bar_margin) :
+      .padding(0.5) :
       d3
       .scaleLinear()
       .range([
@@ -200,20 +197,12 @@ const mz_bar = () => {
       ])
       .domain([dummy_min, dummy_max]) :
       d3
-      .scaleBand()
+      .scalePoint()
       .range([chart_bottom, chart_top])
       .domain(mz_data.map(d => d[p.label]))
-      .padding(p.bar_margin);
+      .padding(0.5);
 
-    // inner scale for grouped bars
-    const d_range = p.orientation == "horizontal" ? x_scale.bandwidth() : y_scale.bandwidth();
-    const inner_scale =
-      d3
-      .scaleBand()
-      .range([0, d_range])
-      .domain(mz_data.map(d => d[p.group]))
-      .padding(p.bar_innermargin);
-
+    //  var y_scale2 = d3.scalePoint().range([height2, 0]).padding(0.5);
 
     // the Tooltip
     const tooltip = d3
@@ -229,38 +218,35 @@ const mz_bar = () => {
     // -------------------------------------
 
     let mz_chart = chart_svg
-      .selectAll("mz_bar")
+      .selectAll("mz_lollipop")
       .data(mz_data)
 
+    // add circles
 
     mz_chart
-      .join("rect")
+      .join("circle")
       .attr("class", p.chart_id)
       //  .attr("id", (d, i) => p.chart_id + "l" + i)
-      .attr("x", d =>
+      .attr("cx", d =>
         p.orientation == "horizontal" ?
-        x_scale(d[p.label]) + inner_scale(d[p.group]) :
-        x_scale(d3.min([0, d[p.value]]))
+        x_scale(d[p.label]) :
+        x_scale(d[p.value])
       )
-      .attr("y", d =>
+      .attr("cy", d =>
         p.orientation == "horizontal" ?
-        y_scale(d3.max([0, d[p.value]])) :
-        y_scale(d[p.label]) + inner_scale(d[p.group])
-      )
-      .attr("height", d =>
-        p.orientation == "horizontal" ?
-        Math.abs(y_scale(d[p.value]) - y_scale(0)) :
-        inner_scale.bandwidth()
+        y_scale(d[p.value]) :
+        y_scale(d[p.label])
       )
       // to have transition
-      // .attr("fill", d => p.color == undefined ? p.color_value : d[p.color])
-      // .attr("r", 0)
+      .attr("fill", d => p.color == undefined ? p.color_value : d[p.color])
+      .attr("r", 0)
       .attr("opacity", 1)
 
       .on("mousemove", function (event, d) {
         d3.select(this)
           .transition()
-          .attr("opacity", 0.5)
+          //.attr("opacity", 0.5)
+          .attr("r", 1.5 * p.radius);
 
         if (event.pageX / window.innerWidth > 0.5) {
           tooltip.style("left", undefined);
@@ -285,20 +271,70 @@ const mz_bar = () => {
       .on("mouseout", function (event, d) {
         d3.select(this)
           .transition()
-          .attr("opacity", 1)
-        // .attr("r", p.radius);
+          // .attr("opacity", 1)
+          .attr("r", p.radius);
         tooltip.style("display", "none");
       })
 
       .transition()
-      .duration(p.transition_duration)
-      .attr("width", d =>
-        p.orientation == "horizontal" ?
-        inner_scale.bandwidth() :
-        Math.abs(x_scale(d[p.value]) - x_scale(0))
-      )
-      .attr("fill", d => p.color == undefined ? p.color_value : d[p.color]);
+      .duration(p.transition_duration / 2)
+      .attr("r", 0)
+      .transition()
+      .duration(p.transition_duration / 2)
+      .attr("r", p.radius);
 
+
+    // The data line
+    // -----------------------------------------------------------------
+
+    if (p.show_data_line == "TRUE") {
+
+      console.log(mz_data);
+
+
+
+      const line = d3
+        .line()
+        .x(d => x_scale(d[p.label])) // set the x values for the line generator
+        .y(d => y_scale(d[p.value])) // set the y values for the line generator
+        .curve(d3.curveCatmullRom); // apply smoothing to the line
+
+      // separate line data
+      // const line_groups = [...new Set(mz_data.map(a => a[p.group]))];
+
+      const line_data = [];
+      const map = new Map();
+      for (const item of mz_data) {
+        if (!map.has(item[p.group])) {
+          map.set(item[p.group], true); // set any value to Map
+          line_data.push({
+            label: item[p.group],
+            color: item[p.color]
+          });
+        }
+      }
+
+      let mz_subchart;
+
+      line_data.forEach(d => {
+        mz_subchart = mz_chart
+          .join('path')
+          .datum(mz_data.filter(a => a[p.group] == d.label))
+          .attr("d", line)
+          .attr("stroke", d.color)
+          .attr("stroke-width", 1)
+          .attr("fill", "none")
+
+        let dpathlength = mz_subchart.node().getTotalLength();
+        mz_subchart
+          .attr("stroke-dasharray", dpathlength)
+          .attr("stroke-dashoffset", dpathlength)
+          .transition()
+          .duration(p.transition_duration)
+          .attr("stroke-dashoffset", 0);
+
+      })
+    }
 
     // Text
 
@@ -320,19 +356,19 @@ const mz_bar = () => {
         .attr("y", d =>
           p.orientation == "horizontal" ?
           y_scale(d[p.value]) :
-          y_scale(d[p.label]) + inner_scale(d[p.group]) + 0.5 * inner_scale.bandwidth()
+          y_scale(d[p.label])
         )
         .attr("dx", d =>
           p.orientation == "horizontal" ?
           mdx :
           d[p.value] < 0 ?
-          -mdx :
-          mdx
+          -mdx - 2 * p.radius :
+          mdx + 2 * p.radius
         )
         .attr("dy", d =>
           p.orientation == "horizontal" ?
           d[p.value] < 0 ?
-          mdy :
+          mdy + 2 * p.radius :
           -mdy :
           mdy
         )
@@ -387,7 +423,9 @@ const mz_bar = () => {
         .call(
           d3
           .axisLeft(y_scale)
-          .ticks(4)
+          .ticks(p.ticks_nb)
+          // .text(d => d3.format(p.text_format)(d[p.value]))
+          .tickFormat(p.orientation == "horizontal" ? d3.format(p.text_format) : undefined)
           .tickSize(ticksize_axis_left)
         );
     }
@@ -403,7 +441,9 @@ const mz_bar = () => {
         .call(
           d3
           .axisBottom(x_scale)
-          .ticks(4)
+          .ticks(p.ticks_nb)
+          // .tickFormat(d3.timeFormat("%x"))
+          .tickFormat(p.orientation != "horizontal" ? d3.format(p.text_format) : undefined)
           .tickSize(ticksize_axis_bott)
         );
     }
@@ -413,6 +453,19 @@ const mz_bar = () => {
 
     if (p.legend == "right" || p.legend == "bottom") {
 
+      let mz_dummy_space = p.legend == "bottom" ? div_width : div_height; // space between legend elements
+      let mz_dummy_offset = p.legend == "bottom" ? div_height : div_width; // space from chart
+
+
+      let mz_legend_space =
+        p.legend_space === undefined ?
+        0.06 * mz_dummy_space :
+        p.legend_space * mz_dummy_space;
+
+      const legend_left = p.legend_left * div_width,
+        legend_top = p.legend_top * div_height;
+
+      // legend data
 
       const legend_data = [];
       const map = new Map();
@@ -426,110 +479,65 @@ const mz_bar = () => {
         }
       }
 
-      // const chart_legend = mz_legend();
-      // chart_legend
+      console.log(legend_data);
 
-      mz_legend()
-        .par('legend', p.legend)
-        .par('div_width', div_width)
-        .par('div_height', div_height)
-        .par('legend_space', p.legend_space)
-        .par('legend_left', p.legend_left)
-        .par('legend_top', p.legend_top)
-        .par('legend_class', p.legend_class)
-        .par('legend_data', legend_data)
-        .par('show', p.show)
-        .par('chart_svg', chart_svg)
-        .par('cbp', p.cbp)
-        .par("cbfun", p.cbfun)
-        .render();
+      chart_svg
+        .append("g")
+        .selectAll("text")
+        .data(legend_data)
+        .join("text")
+        .attr("class", p.legend_class)
+        .attr("x", (d, i) =>
+          p.legend == "bottom" ?
+          legend_left + i * mz_legend_space + 20 :
+          legend_left + 20
+        )
+        .attr("y", (d, i) =>
+          p.legend == "bottom" ?
+          legend_top :
+          legend_top + i * p.legend_space
+        )
+        .style("text-anchor", "start")
+        .style("dominant-baseline", "middle")
+        .text(d => d.label);
 
+      //console.log(p.show);
 
+      chart_svg
+        .append("g")
+        .selectAll("text")
+        .data(legend_data)
+        .join("text")
+        .attr("class", p.legend_class)
+        .attr("x", (d, i) =>
+          p.legend == "bottom" ?
+          legend_left + i * mz_legend_space :
+          legend_left
+        )
+        .attr("y", (d, i) =>
+          p.legend == "bottom" ?
+          legend_top :
+          legend_top + i * mz_legend_space
+        )
+        .style("text-anchor", "start")
+        .style("dominant-baseline", "middle")
+        // .text(d => d.show == 'TRUE' ? '\u2611' : '\u2610')
+        .text(d => p.show.filter(a => a.label == d.label).map(a => a.show) == 'TRUE' ? '\u2611' : '\u2610')
+        .style('stroke', d => d.color)
+        .style('font-weight', 'bold')
+        .style('cursor', 'pointer')
+        .on("click", (event, d) => {
+          const dshow = p.show.filter(a => a.label == d.label).map(a => a.show)[0] == "TRUE" ? "FALSE" : "TRUE";
+          const obj_index = p.show.findIndex((a => a.label == d.label));
+          p.show[obj_index].show = dshow;
+          p.cbfun();
+          // if (p.cols.filter(a => a.show == 'TRUE').length < 2) { // min 2 data
+          //   d.show = 'TRUE';
+          // } else {
+          //   p.cbfun();
+          // }
 
-
-      // let mz_dummy_space = p.legend == "bottom" ? div_width : div_height; // space between legend elements
-      // let mz_dummy_offset = p.legend == "bottom" ? div_height : div_width; // space from chart
-
-
-      // let mz_legend_space =
-      //   p.legend_space === undefined ?
-      //   0.06 * mz_dummy_space :
-      //   p.legend_space * mz_dummy_space;
-
-      // const legend_left = p.legend_left * div_width,
-      //   legend_top = p.legend_top * div_height;
-
-      // // legend data
-
-      // const legend_data = [];
-      // const map = new Map();
-      // for (const item of p.data) {
-      //   if (!map.has(item[p.group])) {
-      //     map.set(item[p.group], true); // set any value to Map
-      //     legend_data.push({
-      //       label: item[p.group],
-      //       color: item[p.color]
-      //     });
-      //   }
-      // }
-
-      // chart_svg
-      //   .append("g")
-      //   .selectAll("text")
-      //   .data(legend_data)
-      //   .join("text")
-      //   .attr("class", p.legend_class)
-      //   .attr("x", (d, i) =>
-      //     p.legend == "bottom" ?
-      //     legend_left + i * mz_legend_space + 20 :
-      //     legend_left + 20
-      //   )
-      //   .attr("y", (d, i) =>
-      //     p.legend == "bottom" ?
-      //     legend_top :
-      //     legend_top + i * p.legend_space
-      //   )
-      //   .style("text-anchor", "start")
-      //   .style("dominant-baseline", "middle")
-      //   .text(d => d.label);
-
-      // //console.log(p.show);
-
-      // chart_svg
-      //   .append("g")
-      //   .selectAll("text")
-      //   .data(legend_data)
-      //   .join("text")
-      //   .attr("class", p.legend_class)
-      //   .attr("x", (d, i) =>
-      //     p.legend == "bottom" ?
-      //     legend_left + i * mz_legend_space :
-      //     legend_left
-      //   )
-      //   .attr("y", (d, i) =>
-      //     p.legend == "bottom" ?
-      //     legend_top :
-      //     legend_top + i * mz_legend_space
-      //   )
-      //   .style("text-anchor", "start")
-      //   .style("dominant-baseline", "middle")
-      //   // .text(d => d.show == 'TRUE' ? '\u2611' : '\u2610')
-      //   .text(d => p.show.filter(a => a.label == d.label).map(a => a.show) == 'TRUE' ? '\u2611' : '\u2610')
-      //   .style('stroke', d => d.color)
-      //   .style('font-weight', 'bold')
-      //   .style('cursor', 'pointer')
-      //   .on("click", (event, d) => {
-      //     const dshow = p.show.filter(a => a.label == d.label).map(a => a.show)[0] == "TRUE" ? "FALSE" : "TRUE";
-      //     const obj_index = p.show.findIndex((a => a.label == d.label));
-      //     p.show[obj_index].show = dshow;
-      //     p.cbfun();
-      //     // if (p.cols.filter(a => a.show == 'TRUE').length < 2) { // min 2 data
-      //     //   d.show = 'TRUE';
-      //     // } else {
-      //     //   p.cbfun();
-      //     // }
-
-      //   });
+        });
     }
 
   };
