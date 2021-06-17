@@ -45,8 +45,8 @@ const mz_heatmap = () => {
     // axes
     axis_value: "noTRUE",
     axis_label: "TRUE",
-    axis_left_class: "axis_chart3",
-    axis_bottom_class: "axis_chart",
+    axis_left_class: "path_none mz_text_small",
+    axis_bottom_class: "path_none mz_text_small",
     padding_axis_value: 0.02, // extra space for value-axis
     grid_value: "noTRUE",
     grid_label: "noTRUE",
@@ -122,7 +122,7 @@ const mz_heatmap = () => {
     // prepare data
     let chart_value = p.value;
 
-    // cal percents
+    // calc percents
     // the y_values -> 100%
     for (let i in p.data) {
       let d_data = p.data.filter(a => a[p.label_y] == p.data[i][p.label_y]);
@@ -134,8 +134,8 @@ const mz_heatmap = () => {
       p.text_format = '.2p';
     }
 
-    console.log(p.data);
-    console.log(chart_value);
+    // console.log(p.data);
+    // console.log(chart_value);
 
     // sort data - decreasing
     if (p.sort == "TRUE") {

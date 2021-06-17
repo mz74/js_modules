@@ -1,5 +1,6 @@
 // replace eval by using functions
 // 2021-05-13 add parameter min_width
+// 2021-05-20 add title argument
 
 "use strict";
 
@@ -43,6 +44,9 @@ const mz_dropdown_div = () => {
     class_button_hover: 'mz_button-droptown_hover', // extra class for hover button
     class_dropdown: 'mz_dropdown-content', // add mz_dropdown-minwidth
     class_option: 'mz_dropdown-content-opt',
+
+    // title for tooötip
+    title: 'Dropdown Menu',
   };
 
   // function to change or get parameter
@@ -94,12 +98,13 @@ const mz_dropdown_div = () => {
     let chart_button =
       chart_div
       .append('div')
-      .style('left', chart_left + 'px')
+      .style('left', chart_left - 16 + 'px')
       .style('top', chart_top + 'px')
-      .style('right', chart_right + 'px')
+      .style('right', chart_right - 16 + 'px')
       .style('bottom', chart_bottom + 'px')
       .attr("class", p.class_button + ' ' + p.chart_id)
       .text(text_selection)
+      .attr('title', p.title)
       .on('mouseleave', (event, d) => {
         //document.getElementById(p.chart_id).classList.toggle("show");
         let d_check = d3.select('#' + p.chart_id);

@@ -1,6 +1,8 @@
 "use strict";
 
 // 2021-05-22
+// 2021-05-28: calc show when undefined
+// 2021-0-30: add symbol1, symbol2
 
 const mz_legend = () => {
 
@@ -11,6 +13,7 @@ const mz_legend = () => {
     cbp: {},
     cbfun: '', // eval, when legend is changed
     show: undefined, // data to show
+    legend_data: undefined, // data.name and color
 
     // legend
     legend: 'none', //  "bottom", "right"
@@ -18,6 +21,9 @@ const mz_legend = () => {
     legend_top: 0.95,
     legend_space: 0.25,
     legend_class: 'mz_text_small mz_text_color',
+
+    symbol1: '\u2611',
+    symbol2: '\u2610', 
   };
 
   // function to change or get parameter
@@ -79,6 +85,7 @@ const mz_legend = () => {
 
     //console.log(p.show);
 
+
     p.chart_svg
       .append("g")
       .selectAll("text")
@@ -98,8 +105,9 @@ const mz_legend = () => {
       .style("text-anchor", "start")
       .style("dominant-baseline", "middle")
       // .text(d => d.show == 'TRUE' ? '\u2611' : '\u2610')
-      .text(d => p.show.filter(a => a.label == d.label).map(a => a.show) == 'TRUE' ? '\u2611' : '\u2610')
+      .text(d => p.show.filter(a => a.label == d.label).map(a => a.show) == 'TRUE' ? p.symbol1 : p.symbol2)
       .style('stroke', d => d.color)
+      .style('fill', d => d.color)
       .style('font-weight', 'bold')
       .style('cursor', 'pointer')
       .on("click", (event, d) => {

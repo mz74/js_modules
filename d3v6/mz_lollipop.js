@@ -4,6 +4,8 @@
 // 2021-04-15 -> function to function factory
 // 2021-05-04 improve color values
 // 2021-05-16 add date axis
+// 2021-05-28 x_scale: add numeric; add domain_x
+
 
 const mz_lollipop = () => {
 
@@ -37,6 +39,7 @@ const mz_lollipop = () => {
     bottom: 0.9,
 
     // axes
+    domain_x: undefined,   // extern domain for x-Axis
     axis_value: "noTRUE",
     axis_label: "TRUE",
     axis_left_class: "path_none mz_text_small",
@@ -44,7 +47,8 @@ const mz_lollipop = () => {
     padding_axis_value: 0.02, // extra space for value-axis
     grid_value: "noTRUE",
     grid_label: "noTRUE",
-    ticks_nb: 2,
+    ticks_nb_left: 3,
+    ticks_nb_bottom: 5,
 
     // direct labeling 
     text: "TRUE",
@@ -139,27 +143,42 @@ const mz_lollipop = () => {
       p.padding_axis_value * chart_height :
       p.padding_axis_value * chart_width;
 
-    // axis scales
+// axis scales
     // horizontal axis (x)
-    const x_scale =
-      p.orientation == "horizontal" ?
-      p.label_format == 'date' ?
-      d3
-      .scaleTime()
-      .range([chart_left + pad_value, chart_right - pad_value])
-      .domain(d3.extent(p.data, d => d[p.label])) :
-      d3
-      .scalePoint()
-      .range([chart_left, chart_right])
-      .domain(p.data.map(d => d[p.label]))
-      .padding(0.5) :
-      d3
-      .scaleLinear()
-      .range([
-        chart_left + pad_value,
-        chart_right - pad_value
-      ])
-      .domain([dummy_min, dummy_max]);
+    let x_scale;
+    if (p.orientation != "horizontal") {
+      x_scale = d3
+        .scaleLinear()
+        .range([
+          chart_left + pad_value,
+          chart_right - pad_value
+        ])
+        .domain([dummy_min, dummy_max]);
+    } else if (p.label_format == 'date') {
+      x_scale = d3
+        .scaleTime()
+        .range([chart_left + pad_value, chart_right - pad_value])
+        .domain(d3.extent(p.data, d => d[p.label]));
+    } else if (p.label_format == 'numeric') {
+      x_scale = d3
+        .scaleLinear()
+        .range([chart_left + pad_value, chart_right - pad_value])
+        .domain(d3.extent(p.data, d => d[p.label]));
+    } else {
+      x_scale = d3
+        .scalePoint()
+        .range([chart_left, chart_right])
+        .domain(p.data.map(d => d[p.label]))
+        .padding(0.5)
+    }
+
+    // change domain!
+    if (p.domain_x !== undefined){
+      x_scale.domain(p.domain_x);
+    }
+
+    // console.log(x_scale.domain());
+    // console.log(p.domain_x);
 
     // vertical axis (y)
     const y_scale =
@@ -391,7 +410,7 @@ const mz_lollipop = () => {
         .call(
           d3
           .axisLeft(y_scale)
-          .ticks(p.ticks_nb)
+          .ticks(p.ticks_nb_left)
           // .text(d => d3.format(p.text_format)(d[p.value]))
           .tickFormat(p.orientation == "horizontal" ? d3.format(p.text_format) : undefined)
           .tickSize(ticksize_axis_left)
@@ -409,7 +428,7 @@ const mz_lollipop = () => {
         .call(
           d3
           .axisBottom(x_scale)
-          .ticks(p.ticks_nb)
+          .ticks(p.ticks_nb_bottom)
           // .tickFormat(d3.timeFormat("%x"))
           .tickFormat(p.orientation != "horizontal" ? d3.format(p.text_format) : undefined)
           .tickSize(ticksize_axis_bott)

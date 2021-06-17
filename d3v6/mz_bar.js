@@ -426,6 +426,16 @@ const mz_bar = () => {
         }
       }
 
+      if (p.show === undefined){
+        p.show = [...new Set(legend_data.map(a => a.label))]
+        .map((a,i) => {      
+          return ({
+            label: a,
+            show: 'TRUE',
+          });
+        });
+      }
+
       // const chart_legend = mz_legend();
       // chart_legend
 

@@ -5,6 +5,7 @@
 // 2021-05-04 improve color values
 // 2021-05-16 add date axis
 // 2021-05-22 change to xy chart
+// 2021-05-08 add x-scale numeric
 
 const mz_brush = () => {
 
@@ -24,7 +25,7 @@ const mz_brush = () => {
     order: undefined,
 
     // brush range and domain
-    brush_range: undefined,
+    brush_range: [0, 0],
     brush_domain: undefined,
 
     label_format: 'categorical', // categorical, numeric or date
@@ -133,27 +134,35 @@ const mz_brush = () => {
       p.padding_axis_value * chart_height :
       p.padding_axis_value * chart_width;
 
+
     // axis scales
     // horizontal axis (x)
-    const x_scale =
-      p.orientation == "horizontal" ?
-      p.label_format == 'date' ?
-      d3
-      .scaleTime()
-      .range([chart_left + pad_value, chart_right - pad_value])
-      .domain(d3.extent(mz_data, d => d[p.label])) :
-      d3
-      .scalePoint()
-      .range([chart_left, chart_right])
-      .domain(mz_data.map(d => d[p.label]))
-      .padding(0.5) :
-      d3
-      .scaleLinear()
-      .range([
-        chart_left + pad_value,
-        chart_right - pad_value
-      ])
-      .domain([dummy_min, dummy_max]);
+    let x_scale;
+    if (p.orientation != "horizontal") {
+      x_scale = d3
+        .scaleLinear()
+        .range([
+          chart_left + pad_value,
+          chart_right - pad_value
+        ])
+        .domain([dummy_min, dummy_max]);
+    } else if (p.label_format == 'date') {
+      x_scale = d3
+        .scaleTime()
+        .range([chart_left + pad_value, chart_right - pad_value])
+        .domain(d3.extent(mz_data, d => d[p.label]));
+    } else if (p.label_format == 'numeric') {
+      x_scale = d3
+        .scaleLinear()
+        .range([chart_left + pad_value, chart_right - pad_value])
+        .domain(d3.extent(mz_data, d => d[p.label]));
+    } else {
+      x_scale = d3
+        .scalePoint()
+        .range([chart_left, chart_right])
+        .domain(mz_data.map(d => d[p.label]))
+        .padding(0.5)
+    }
 
     // vertical axis (y)
     const y_scale =
@@ -175,7 +184,7 @@ const mz_brush = () => {
     // -------------------------------------
 
     let mz_chart = chart_svg
-      .selectAll("mz_lollipop")
+      .selectAll("mz_brush")
       .data(mz_data)
 
     // The data line
@@ -238,10 +247,27 @@ const mz_brush = () => {
       // .on("brush", brushended)
       .on("end", brushended);
 
-    if (p.brush_range === undefined) {
+    // if (p.brush_range === undefined) {
+    //   p.brush_domain = x_scale.domain();
+    //   p.brush_range = x_scale.range();
+    // }
+
+    console.log(p.brush_domain);
+
+    if (p.brush_domain === undefined) {
       p.brush_domain = x_scale.domain();
       p.brush_range = x_scale.range();
+    } else {
+      p.brush_range[0] = x_scale(p.brush_domain[0]);
+      p.brush_range[1] = x_scale(p.brush_domain[1]);
     }
+
+    // for later safty check
+    const old_brush = p.brush_range;
+
+    // define minimum movement
+    const min_brush = 0.01 * Math.abs(x_scale.range()[1] - x_scale.range()[0]);
+    // console.log(min_brush);
 
     let mz_brush = chart_svg
       .append("g")
@@ -260,11 +286,14 @@ const mz_brush = () => {
       if (selection) {
         if (selection[0] != p.brush_range[0] || selection[1] != p.brush_range[1]) {
           // gb.call(brush.move, defaultSelection);
-          console.log(selection);
-          console.log(selection.map(x_scale.invert));
+          // console.log(selection);
+          // console.log(selection.map(x_scale.invert));
           p.brush_range = selection;
           p.brush_domain = selection.map(x_scale.invert);
-          p.cbfun();
+          if (Math.abs(old_brush[0] - p.brush_range[0]) > min_brush || Math.abs(old_brush[1] - p.brush_range[1]) > min_brush) {
+            p.cbfun();
+          }
+
         }
 
       }

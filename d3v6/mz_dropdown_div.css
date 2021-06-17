@@ -4,7 +4,7 @@
   position: absolute;
   background-color: var( --box-color);
   color: var(--text-color);
-  padding: 0.25em 1em;
+  padding: 0.25em 16px;
   /* font-size: 16px; */
   border: none;
   cursor: pointer;
@@ -13,7 +13,8 @@
 
 .mz_button-droptown:hover, .mz_button-droptown:focus {
   background-color: var(--box-hover-color);
-  /* border-radius: 50%; */
+  /* border-radius: 40%; */
+  /* border-radius: 10% 50%; */
 }
 
 .mz_dropdown-content {
